@@ -1,0 +1,37 @@
+﻿@page "/"
+@inherits Equitel_JoseGabrielCamacho.Pages.PaginaBase.PaginaBase;
+@using Equitel_JoseGabrielCamacho.Data
+@using Equitel_JoseGabrielCamacho.DataAccess
+@using System.Data
+
+@if (mostrarInfo)
+{
+    <div class="container-fluid">
+        <h5 class="">INICIO</h5>
+        <div class="row">
+            <div class="col-lg-3 pb-1 pt-1 text-center">
+                <a href="/nuevaventa" class="btn modulo btn-lg p-5">NUEVA VENTA</a>
+            </div>
+            <div class="col-lg-3 pb-1 pt-1 text-center">
+                <a href="/ventasdeldia" class="btn modulo btn-lg p-5">VENTAS DEL DÍA</a>
+            </div>
+            @if(Rol != 2)
+            {
+                <div class="col-lg-3 pb-1 pt-1 text-center">
+                    <a href="/productos" class="btn modulo btn-lg p-5">INVENTARIO DE PRODUCTOS</a>
+                </div>
+                <div class="col-lg-3 pb-1 pt-1 text-center">
+                    <a href="/auditoria" class="btn modulo btn-lg p-5">AUDITORIA DEL SISTEMA</a>
+                </div>
+                <div class="col-lg-3 pb-1 pt-1 text-center">
+                    <a href="/usuarios" class="btn modulo btn-lg p-5">CONFIGURAR USUARIOS</a>
+                </div>
+            }
+            
+        </div>
+    </div>
+}
+
+@code {
+    
+}

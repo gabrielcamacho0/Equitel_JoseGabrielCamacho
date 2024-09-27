@@ -1,0 +1,155 @@
+﻿@page "/nuevaventa"
+@inherits Equitel_JoseGabrielCamacho.Pages.PaginaBase.PaginaBase;
+@using System.Data;
+@using Equitel_JoseGabrielCamacho.Data;
+@using Equitel_JoseGabrielCamacho.DataAccess;
+
+@if (mostrarInfo)
+{
+    <div class="container-fluid">
+        <h5 class="texto-azul">NUEVA VENTA</h5>
+
+        
+            <div class="row mb-5">
+                @foreach (DetalleVenta nuevoDV in listaDetalleVenta)
+                {
+                    int idNuevoDV = listaDetalleVenta.IndexOf(nuevoDV);
+                    <div class="col-md-5">
+                        <label class="form-label">Producto</label>
+                        <div class="form-outline form-white">
+                            <select class="form-control form-control-lg" @bind="nuevoDV.IdProducto" required>
+                                <option value="0" selected>Seleccione un producto...</option>
+                                @if (dtProductos.Rows.Count > 0)
+                                {
+                                    @foreach (DataRow producto in dtProductos.Rows)
+                                    {
+                                        <option value="@producto["IdProducto"]">@producto["NombreProducto"]</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-5">
+                        <label class="form-label">Cantidad</label>
+                        <div class="form-outline form-white">
+                            <input type="number" min="1" class="form-control form-control-lg" @bind-value="nuevoDV.CantidadVendida" required />
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label"></label>
+                        <div class="form-outline form-white">
+                            <div class="btn btn-danger fw-bold" title="Eliminar producto" @onclick="(async (e)=>{ await eliminarProducto(idNuevoDV);})">X</div>
+                        </div>
+                        
+                    </div>
+                }
+                
+            </div>
+
+            <div class="text-center mt-1 mb-1">
+                <div class="btn btn-success fw-bold" title="Agregar nuevo producto" @onclick="nuevoProducto">+</div>
+            </div>
+
+            @if (listaDetalleVenta.Count > 0)
+            {
+                <div class="text-center">
+                <button class="btn btn-primary" @onclick='(async (e)=>{ await guardar();})'>Guardar</button>
+                </div>
+            }
+        
+    </div>
+}
+
+@code {
+    DataTable dtProductos = new DataTable();
+
+
+    Venta venta = new Venta();
+    List<DetalleVenta> listaDetalleVenta = new List<DetalleVenta>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        dtProductos = new ProductoDA().SelectTable(new Producto { }, 0);
+    }
+
+
+    protected async Task guardar()
+    {
+        try
+        {
+            if (await JSRuntime.InvokeAsync<bool>("confirm", CancellationToken.None, "¿Está seguro de confirmar la venta?"))
+            {
+                decimal totalVenta = 0;
+
+                foreach (DetalleVenta item in listaDetalleVenta)
+                {
+
+                    if (item.IdProducto < 1 || item.CantidadVendida < 1)
+                    {
+                        await JSRuntime.InvokeVoidAsync("alert", CancellationToken.None, $"Debe seleccionar los productos y la cantidad debe ser superior a 1.");
+                        return;
+                    }
+
+                    DataTable dtProducto = new ProductoDA().SelectTable(new Producto { IdProducto = item.IdProducto }, 5);
+
+                    string nombreProducto = dtProducto.Rows[0]["NombreProducto"].ToString();
+                    int stockProducto = Convert.ToInt32(dtProducto.Rows[0]["CantidadProducto"]);
+
+                    if (item.CantidadVendida > stockProducto)
+                    {
+                        await JSRuntime.InvokeVoidAsync("alert", CancellationToken.None, $"La cantidad solicitada de {nombreProducto} es superior al stock ({stockProducto})");
+                        return;
+                    }
+
+                    totalVenta += Convert.ToDecimal(dtProducto.Rows[0]["ValorProducto"]) * item.CantidadVendida;
+                }
+
+                int idVenta = Convert.ToInt32(new VentaDA().SelectTable(new Venta { IdVendedor = idUsuario, TotalVenta = totalVenta, FechaVenta = DateTime.Now }, 1).Rows[0][0]);
+
+                foreach (DetalleVenta item in listaDetalleVenta)
+                {
+                    DataTable dtProducto = new ProductoDA().SelectTable(new Producto { IdProducto = item.IdProducto }, 5);
+
+                    new DetalleVentaDA().InsertOrUpdate(new DetalleVenta { IdVenta = idVenta, IdProducto = item.IdProducto, CantidadVendida = item.CantidadVendida, ValorUnitario = Convert.ToDecimal(dtProducto.Rows[0]["ValorProducto"]) }, 0);
+                    new DetalleVentaDA().InsertOrUpdate(new DetalleVenta { IdProducto = item.IdProducto, CantidadVendida = item.CantidadVendida }, 1);
+                }
+
+                NavManager.NavigateTo($"/", true);
+            }
+        }
+        catch
+        {
+
+        }
+    }
+
+    protected void nuevoProducto()
+    {
+        try
+        {
+            listaDetalleVenta.Add(new DetalleVenta());
+        }
+        catch
+        {
+
+        }
+    }
+
+    async Task eliminarProducto(int indexProd)
+    {
+        try
+        {
+            if (!await JSRuntime.InvokeAsync<bool>("confirm", "¿Está seguro de eliminar este producto?"))
+                return;
+
+            listaDetalleVenta.RemoveAt(indexProd);
+        }
+        catch
+        {
+
+        }
+    }
+}

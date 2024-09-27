@@ -1,0 +1,120 @@
+﻿@page "/login"
+@using Equitel_JoseGabrielCamacho.Data;
+@inject Blazored.LocalStorage.ILocalStorageService sessionStorage;
+@inject NavigationManager NavManager;
+@using Equitel_JoseGabrielCamacho.DataAccess;
+@using DBConnection;
+@using System.Data;
+@inject IJSRuntime JSRuntime;
+@using System.Globalization;
+@using System.Net.Http;
+
+@if (mostrarInfo)
+{
+    <section class="vh-100 login-bg">
+        <div class="container py-5 h-100">
+            <div class="row d-flex justify-content-center align-items-center h-100">
+                <div class="col-12 col-md-8 col-lg-6 col-xl-5">
+                    <div class="card login-card text-white" style="border-radius: 1rem;">
+                        <div class="card-body p-5 pb-0 text-center">
+                            <div class="mb-md-5 mt-md-4 pb-0">
+                                <h3 class="fw-bold mb-5 text-uppercase">Ventas</h3>
+                                <EditForm Model="modeloUsuario" class="form">
+                                    <div class="form-outline form-white mb-4">
+                                        <InputText type="text" class="form-control form-control-lg" required placeholder="Usuario" @bind-Value="modeloUsuario.Logueo" id="usuario_dbv"></InputText>
+                                    </div>
+                                    <div class="form-outline form-white mb-4">
+                                        <InputText class="form-control form-control-lg" required placeholder="Contraseña" type="password" @bind-Value="modeloUsuario.Clave" id="clave_dbv"></InputText>
+                                    </div>
+                                    <button type="submit" @onclick="(async (e) => await IniciarSesion( modeloUsuario.Logueo, modeloUsuario.Clave))" class="btn btn-primary texto-blanco btn-lg px-5"><span class="oi oi-account-login"></span>   ENTRAR</button>
+                                </EditForm>
+                                <br />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+}
+
+
+@code {
+    private bool mostrarInfo = false;
+    private Usuario modeloUsuario = new Usuario();
+    private DataTable datos = null;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (await sessionStorage.GetItemAsync<int>("IdUsuario") != 0)
+            {
+                return;
+            }
+            mostrarInfo = true;
+            return;
+        }
+        catch { }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool render)
+    {
+        int sesion = await sessionStorage.GetItemAsync<int>("IdUsuario");
+        if (sesion != 0)
+        {
+            NavManager.NavigateTo("/", true);
+            return;
+        }
+    }
+
+    private async Task IniciarSesion(string u, string p)
+    {
+        try
+        {
+            if (String.IsNullOrEmpty(u) || String.IsNullOrEmpty(p))
+            {
+                return;
+            }
+            p = ToMD5(p);
+            datos = new UsuarioDA().SelectTable(new Usuario { Logueo = u, Clave = p }, 0);
+
+            if (datos.Rows.Count > 0)
+            {
+                //ASIGNA LAS VARIABLES DE SESIÓN QUE SE UTILIZARAN EN EL CICLO DE VIDA DE LA APLICACIÓN
+
+                int _idUsuario = (Int32)datos.Rows[0]["IdUsuario"];
+                string _nombreUsuario = (String)datos.Rows[0]["NombreUsuario"];
+                int _rol = (Int32)datos.Rows[0]["Rol"];
+                
+                await sessionStorage.SetItemAsync("NombreUsuario", _nombreUsuario);
+                await sessionStorage.SetItemAsync("Rol", _rol);
+                await sessionStorage.SetItemAsync("IdUsuario", _idUsuario);
+                NavManager.NavigateTo("/", true);
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("alert", System.Threading.CancellationToken.None, "Usuario y/o contraseña incorrectos.");
+                modeloUsuario = new Usuario();
+                return;
+            }
+        }
+        catch
+        {
+            
+        }
+    }
+
+    //ENCRIPTA LA CONTRASEÑA A MD5 PARA ENVIARLA AL SP DE LOGIN
+    private static string ToMD5(string convertir)
+    {
+        using (System.Security.Cryptography.MD5 md5 = System.Security.Cryptography.MD5.Create())
+        {
+            byte[] inputBytes = System.Text.Encoding.ASCII.GetBytes(convertir);
+            byte[] hashBytes = md5.ComputeHash(inputBytes);
+            return Convert.ToHexString(hashBytes);
+        }
+    }
+
+}

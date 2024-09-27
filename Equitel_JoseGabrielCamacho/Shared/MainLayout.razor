@@ -1,0 +1,31 @@
+﻿@inherits LayoutComponentBase
+@inject Blazored.LocalStorage.ILocalStorageService sessionStorage
+
+<PageTitle>Ventas</PageTitle>
+
+@if (mostrarInfo)
+{
+    <NavMenu />
+}
+
+<main class="container-fluid p-0">
+    @Body
+</main>
+
+@code {
+    public bool mostrarInfo = false;
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (await sessionStorage.GetItemAsync<int>("IdUsuario") == 0)
+            {
+                return;
+            }
+            mostrarInfo = true;
+        }
+        catch
+        {
+        }
+    }
+}

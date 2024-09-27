@@ -1,0 +1,109 @@
+﻿@page "/editarusuario"
+@inherits Equitel_JoseGabrielCamacho.Pages.PaginaBase.PaginaBase;
+@using System.Data;
+@using Equitel_JoseGabrielCamacho.Data;
+@using Equitel_JoseGabrielCamacho.DataAccess;
+
+@if (mostrarInfo && Rol != 2)
+{
+    <div class="container-fluid">
+        <h5 class="texto-azul">EDITAR USUARIO</h5>
+
+        <EditForm Model="usuario">
+            <div class="row mb-4">
+
+                <div class="col-md-4">
+                    <label class="form-label">Nombre</label>
+                    <div class="form-outline form-white">
+                        <InputText type="text" class="form-control form-control-lg" @bind-Value="usuario.NombreUsuario" required></InputText>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Usuario de Logueo</label>
+                    <div class="form-outline form-white">
+                        <InputText type="text" class="form-control form-control-lg" @bind-Value="usuario.Logueo" required></InputText>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Clave</label>
+                    <div class="form-outline form-white">
+                        <InputText type="password" class="form-control form-control-lg" @bind-Value="usuario.Clave" required></InputText>
+                    </div>
+                </div>
+
+                <label class="form-label">Rol</label>
+                <div class="form-outline form-white">
+                    <select @bind="usuario.Rol" class="form-control form-control-lg" required>
+                        <option value="1" selected>Administrador</option>
+                        <option value="2">Vendedor</option>
+                    </select>
+                </div>
+            </div>
+
+
+            <div class="text-center">
+                <input type="submit" class="btn btn-success" value="Guardar" @onclick='async (e)=>{ await guardar();}'>
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
+
+    Usuario usuario = new Usuario();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        DataTable dtUsuario = new UsuarioDA().SelectTable(new Usuario { IdUsuario = Id}, 6);
+
+        if(dtUsuario.Rows.Count > 0)
+        {
+            usuario.IdUsuario = Convert.ToInt32(dtUsuario.Rows[0]["IdUsuario"]);
+            usuario.NombreUsuario = dtUsuario.Rows[0]["NombreUsuario"].ToString();
+            usuario.Logueo = dtUsuario.Rows[0]["Logueo"].ToString();
+            usuario.Rol = Convert.ToInt32(dtUsuario.Rows[0]["Rol"]);
+        }
+
+    }
+
+
+    protected async Task guardar()
+    {
+        try
+        {
+
+            if (String.IsNullOrEmpty(usuario.NombreUsuario.Trim()) || String.IsNullOrEmpty(usuario.Logueo.Trim()) || String.IsNullOrEmpty(usuario.Clave) || usuario.Rol < 1)
+            {
+                return;
+            }
+
+            if (await JSRuntime.InvokeAsync<bool>("confirm", CancellationToken.None, "¿Está seguro de guardar?"))
+            {
+
+                if (new UsuarioDA().SelectTable(usuario, 2).Rows.Count > 0)
+                {
+                    await JSRuntime.InvokeAsync<bool>("confirm", CancellationToken.None, "Ya existe un usuario activo con ese usuario de Logueo");
+                    return;
+                }
+
+                usuario.Clave = ToMD5(usuario.Clave);
+                new UsuarioDA().InsertOrUpdate(usuario, 4);
+                registrarAuditoria($"Se modificó el usuario ID {usuario.IdUsuario}");
+                usuario = new Usuario();
+                NavManager.NavigateTo($"/usuarios", true);
+            }
+        }
+        catch
+        {
+
+        }
+    }
+}

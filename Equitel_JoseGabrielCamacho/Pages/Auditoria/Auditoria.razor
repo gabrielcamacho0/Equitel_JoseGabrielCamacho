@@ -1,0 +1,56 @@
+﻿@page "/auditoria"
+@inherits Equitel_JoseGabrielCamacho.Pages.PaginaBase.PaginaBase;
+@using System.Data;
+@using Equitel_JoseGabrielCamacho.Data;
+@using Equitel_JoseGabrielCamacho.DataAccess;
+
+@if (mostrarInfo)
+{
+    <div class="container-fluid">
+        <h5 class="texto-azul">AUDITORIA DEL SISTEMA</h5>
+
+        <div class="tabla-dbversion">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr class="align-middle">
+                        <th>Id</th>
+                        <th>Fecha</th>
+                        <th>Usuario</th>
+                        <th>Accion</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (dtAuditoria.Rows.Count > 0)
+                    {
+                        @foreach (DataRow auditoria in dtAuditoria.Rows)
+                        {
+                            <tr class="align-middle">
+                                <td class="">@auditoria["IdAuditoria"]</td>
+                                <td class="">@Convert.ToDateTime(auditoria["Fecha"]).Date.ToString("dd/MM/yyyy")</td>
+                                <td class="">@auditoria["NombreUsuario"]</td>
+                                <td class="">@auditoria["Accion"]</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+
+@code {
+    DataTable dtAuditoria = new DataTable();
+    
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await base.OnInitializedAsync();
+
+            dtAuditoria = new AuditoriaDA().SelectTable(new Data.Auditoria { Fecha = DateTime.Now }, 0);
+        }
+        catch { }
+    }
+}

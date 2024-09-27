@@ -1,0 +1,125 @@
+﻿@page "/editarproducto"
+@inherits Equitel_JoseGabrielCamacho.Pages.PaginaBase.PaginaBase;
+@using System.Data;
+@using Equitel_JoseGabrielCamacho.Data;
+@using Equitel_JoseGabrielCamacho.DataAccess;
+
+@if (mostrarInfo && Rol != 2)
+{
+    <div class="container-fluid">
+        <h5 class="texto-azul">EDITAR PRODUCTO</h5>
+
+        <EditForm Model="producto">
+            <div class="row mb-4">
+
+                <div class="col-md-4">
+                    <label class="form-label">Nombre</label>
+                    <div class="form-outline form-white">
+                        <InputText type="text" class="form-control form-control-lg" @bind-Value="producto.NombreProducto" required></InputText>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Descripcion</label>
+                    <div class="form-outline form-white">
+                        <InputText type="text" class="form-control form-control-lg" @bind-Value="producto.DescripcionProducto" required></InputText>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Modelo</label>
+                    <div class="form-outline form-white">
+                        <InputNumber type="number" min="0" class="form-control form-control-lg" @bind-Value="producto.ModeloProducto" required></InputNumber>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Valor unitario</label>
+                    <div class="form-outline form-white">
+                        <InputNumber type="number" min="0" class="form-control form-control-lg" @bind-Value="producto.ValorProducto" required></InputNumber>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Cantidad en stock</label>
+                    <div class="form-outline form-white">
+                        <InputNumber type="number" min="0" class="form-control form-control-lg" @bind-Value="producto.CantidadProducto" required></InputNumber>
+                    </div>
+                </div>
+
+                <label class="form-label">Proveedor</label>
+                <div class="form-outline form-white">
+                    <select @bind="producto.IdProveedor" class="form-control form-control-lg" required>
+                        <option value="1" selected>Proveedor 1</option>
+                        <option value="2">Proveedor 2</option>
+                    </select>
+                </div>
+
+            </div>
+
+
+            <div class="text-center">
+                <input type="submit" class="btn btn-success" value="Guardar" @onclick='async (e)=>{ await guardar();}'>
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
+
+    Producto producto = new Producto();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        DataTable dtProducto = new ProductoDA().SelectTable(new Producto { IdProducto = Id }, 5);
+
+        if (dtProducto.Rows.Count > 0)
+        {
+            producto.IdProducto = Convert.ToInt32(dtProducto.Rows[0]["IdProducto"]);
+            producto.NombreProducto = dtProducto.Rows[0]["NombreProducto"].ToString();
+            producto.DescripcionProducto = dtProducto.Rows[0]["DescripcionProducto"].ToString();
+            producto.ModeloProducto = Convert.ToInt32(dtProducto.Rows[0]["ModeloProducto"]);
+            producto.ValorProducto = Convert.ToDecimal(dtProducto.Rows[0]["ValorProducto"]);
+            producto.IdProveedor = Convert.ToInt32(dtProducto.Rows[0]["IdProveedor"]);
+            producto.CantidadProducto = Convert.ToInt32(dtProducto.Rows[0]["CantidadProducto"]);
+        }
+
+    }
+
+
+    protected async Task guardar()
+    {
+        try
+        {
+
+            if (String.IsNullOrEmpty(producto.NombreProducto.Trim()) || String.IsNullOrEmpty(producto.DescripcionProducto.Trim()) || producto.ModeloProducto < 0 || producto.ValorProducto < 0 || producto.IdProveedor < 1 || producto.CantidadProducto < 0)
+            {
+                return;
+            }
+
+            if (await JSRuntime.InvokeAsync<bool>("confirm", CancellationToken.None, "¿Está seguro de crear el producto?"))
+            {
+
+                if (new ProductoDA().SelectTable(producto, 1).Rows.Count > 0)
+                {
+                    await JSRuntime.InvokeAsync<bool>("confirm", CancellationToken.None, "Ya existe un producto activo con ese nombre y modelo");
+                    return;
+                }
+
+                new ProductoDA().InsertOrUpdate(producto, 3);
+                registrarAuditoria($"Se editó el producto ID {producto.IdProducto}");
+                producto = new Producto();
+                NavManager.NavigateTo($"/productos", true);
+            }
+        }
+        catch
+        {
+
+        }
+    }
+}
